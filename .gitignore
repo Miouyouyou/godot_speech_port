@@ -1,0 +1,11 @@
+*.o
+*.*swp
+*.orig
+*~
+\#*
+*#
+*.bak
+*.dll
+*.exe
+
+__pycache__/

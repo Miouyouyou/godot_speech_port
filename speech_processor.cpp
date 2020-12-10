@@ -237,6 +237,8 @@ PoolVector2Array SpeechProcessor::decompress_buffer(
 }
 
 void SpeechProcessor::set_streaming_bus(const String &p_name) {
+	printf("Meow meow meow\n");
+	print_error(String("p_name : ") + p_name);
 	if (!audio_server) {
 		return;
 	}
@@ -297,6 +299,12 @@ void SpeechProcessor::_ready() {
 
 void SpeechProcessor::_notification(int p_what) {
 	switch (p_what) {
+		case NOTIFICATION_READY:
+			if (!Engine::get_singleton()->is_editor_hint()) {
+				_init();
+				_ready();
+			}
+			break;
 		case NOTIFICATION_ENTER_TREE:
 			if (!Engine::get_singleton()->is_editor_hint()) {
 				mix_byte_array.resize(BUFFER_FRAME_COUNT * BUFFER_BYTE_COUNT);

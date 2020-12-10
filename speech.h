@@ -48,7 +48,7 @@ class Speech : public Node {
 	PoolByteArray input_byte_array;
 	float volume = 0.0;
 
-	mutable Mutex *audio_mutex;
+	//mutable Mutex *audio_mutex;
 
 	int skipped_audio_packets = 0;
 
@@ -90,6 +90,7 @@ private:
 	// copying from the back.
 	InputPacket *get_next_valid_input_packet() {
 		if (current_input_size < MAX_AUDIO_BUFFER_ARRAY_SIZE) {
+			printf("current_input_size : %d\n", current_input_size);
 			InputPacket *input_packet = &input_audio_buffer_array[current_input_size];
 			current_input_size++;
 			return input_packet;
@@ -122,18 +123,20 @@ private:
 		speech_processor->compress_buffer_internal(&input_byte_array, &compressed_buffer_input);
 		{
 			// Lock
-			MutexLock mutex_lock(audio_mutex);
+			//MutexLock mutex_lock(audio_mutex);
 
 			// Find the next valid input packet in the queue
 			InputPacket *input_packet = get_next_valid_input_packet();
 			// Copy the buffer size from the compressed_buffer_input back into the input packet
 			memcpy(
-					input_packet->compressed_byte_array.write().ptr(),
-					compressed_buffer_input.compressed_byte_array->read().ptr(),
-					SpeechProcessor::PCM_BUFFER_SIZE);
+				input_packet->compressed_byte_array.write().ptr(),
+				compressed_buffer_input.compressed_byte_array->read().ptr(),
+				SpeechProcessor::PCM_BUFFER_SIZE);
 
 			input_packet->buffer_size = compressed_buffer_input.buffer_size;
 			input_packet->loudness = p_mic_input->volume;
+
+			
 		}
 	}
 
@@ -183,7 +186,7 @@ public:
 	// Copys all the input buffers to the output buffers
 	// Returns the amount of buffers
 	Array copy_and_clear_buffers() {
-		MutexLock mutex_lock(audio_mutex);
+		//MutexLock mutex_lock(audio_mutex);
 
 		Array output_array;
 		output_array.resize(current_input_size);
@@ -191,6 +194,7 @@ public:
 		for (int i = 0; i < current_input_size; i++) {
 			Dictionary dict;
 
+			printf("i = %d; i < %d\n", i, current_input_size);
 			dict["byte_array"] = input_audio_buffer_array[i].compressed_byte_array;
 			dict["buffer_size"] = input_audio_buffer_array[i].buffer_size;
 			dict["loudness"] = input_audio_buffer_array[i].loudness;
@@ -211,9 +215,11 @@ public:
 	}
 
 	bool start_recording() {
+		print_line("Starting to record");
 		if (speech_processor) {
 			speech_processor->start();
 			skipped_audio_packets = 0;
+			print_line("Recording...");
 			return true;
 		}
 
@@ -237,9 +243,12 @@ public:
 	}
 
 	void _init() {
+		print_error("Initializing Speech !");
 		if (!Engine::get_singleton()->is_editor_hint()) {
 			preallocate_buffers();
 			speech_processor = memnew(SpeechProcessor);
+			print_error("speech processor Initialized !");
+			//audio_mutex = Mutex::create();
 		}
 	}
 
@@ -254,6 +263,11 @@ public:
 	void _notification(int p_what) {
 		if (!Engine::get_singleton()->is_editor_hint()) {
 			switch (p_what) {
+				case NOTIFICATION_READY: {
+					_init();
+					_ready();
+				}
+				break;
 				case NOTIFICATION_EXIT_TREE: {
 					speech_processor->queue_delete();
 					break;
@@ -266,6 +280,7 @@ public:
 	}
 
 	void set_streaming_bus(const String &p_name) {
+		print_line(String("p_name : ") + p_name);
 		if (speech_processor) {
 			speech_processor->set_streaming_bus(p_name);
 		}
